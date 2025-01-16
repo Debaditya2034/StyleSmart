@@ -6,7 +6,8 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "https://api.couponservice.com/*"
   ],
   "host_permissions": [
     "https://*.amazon.in/*",
@@ -43,8 +44,12 @@
         "src/utils/textAnalyzer.js",
         "src/utils/productAnalyzer.js",
         "src/content/productDetector.js",
-        "src/content/content.js"
-      ]
+        "src/content/content.js",
+        "utils/couponAnalyzer.js",
+        "content/couponDetector.js",
+        "content/productDetector.js"
+      ],
+      "css": ["popup/popup.css"]
     }
   ]
 }

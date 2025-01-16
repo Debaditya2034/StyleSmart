@@ -264,4 +264,20 @@ class PopupManager {
 // Initialize popup when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new PopupManager();
+
+// popup/popup.js (Add to existing file)
+// Add coupon-related UI handlers
+document.addEventListener('DOMContentLoaded', async () => {
+    const couponSection = document.getElementById('coupon-section');
+    const couponAnalyzer = new CouponAnalyzer();
+    
+    // Get current tab's retailer
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const retailer = new URL(tab.url).hostname.split('.')[1];
+    
+    const coupons = await couponAnalyzer.fetchCoupons(retailer);
+    
+    // Update popup UI with coupon information
+    couponSection.innerHTML = generateCouponList(coupons);
+});
 });
