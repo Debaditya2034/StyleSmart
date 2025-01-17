@@ -1,5 +1,5 @@
-// utils/couponAnalyzer.js
-class CouponAnalyzer {
+// src/utils/couponAnalyzer.js
+export class CouponAnalyzer {
     constructor() {
         this.couponSources = [
             'retailmenot.com',
@@ -11,8 +11,31 @@ class CouponAnalyzer {
     async fetchCoupons(retailer) {
         try {
             // Simulate API call to coupon aggregation service
-            const response = await fetch(`https://api.couponservice.com/coupons/${retailer}`);
-            return await response.json();
+            // In production, replace with actual API endpoint
+            const mockCoupons = [
+                {
+                    code: "SAVE20",
+                    discountValue: 20,
+                    expiryDate: "2025-12-31",
+                    description: "20% off on all items"
+                },
+                {
+                    code: "FASHION15",
+                    discountValue: 15,
+                    expiryDate: "2025-12-31",
+                    description: "15% off on fashion items"
+                },
+                {
+                    code: "NEWUSER10",
+                    discountValue: 10,
+                    expiryDate: "2025-12-31",
+                    description: "10% off for new users"
+                }
+            ];
+            
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return mockCoupons;
         } catch (error) {
             console.error('Error fetching coupons:', error);
             return [];
@@ -26,7 +49,6 @@ class CouponAnalyzer {
 
     sortCoupons(coupons) {
         return coupons.sort((a, b) => {
-            // Sort by discount value (higher first)
             return b.discountValue - a.discountValue;
         });
     }

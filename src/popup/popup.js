@@ -1,283 +1,190 @@
 // src/popup/popup.js
+import { CouponAnalyzer } from '../utils/couponAnalyzer.js';
 
-class PopupManager {
-    constructor() {
-        this.elements = {
-            loading: document.getElementById('loading'),
-            currentProduct: document.getElementById('current-product'),
-            productImage: document.getElementById('product-image'),
-            productTitle: document.getElementById('product-title'),
-            productPrice: document.getElementById('product-price'),
-            productStore: document.getElementById('product-store'),
-            couponsSection: document.getElementById('coupons-section'),
-            couponsList: document.getElementById('coupons-list'),
-            noCoupons: document.getElementById('no-coupons'),
-            similarProductsSection: document.getElementById('similar-products-section'),
-            productsGrid: document.getElementById('products-grid'),
-            noProducts: document.getElementById('no-products'),
-            errorMessage: document.getElementById('error-message'),
-            productsLoading: document.getElementById('products-loading')
-        };
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize components
+    initializeUI();
+    await loadCurrentProduct();
+    await loadCoupons();
+    await loadSimilarProducts();
+});
 
-        this.init();
-    }
+async function initializeUI() {
+    // Set up UI event listeners
+    document.getElementById('refresh-button')?.addEventListener('click', refreshData);
+    document.getElementById('settings-button')?.addEventListener('click', openSettings);
+    setupCouponSection();
+}
 
-    async init() {
-        try {
-            // Get the current tab
-            const [tab] = await chrome.tabs.query({ 
-                active: true, 
-                currentWindow: true 
-            });
-
-            if (!tab) {
-                throw new Error('No active tab found');
-            }
-
-            // Ensure content scripts are loaded
-            await this.ensureContentScriptsLoaded(tab);
-
-            // Try to get product details
-            const productDetails = await this.getProductDetails(tab);
-            this.handleProductDetails(productDetails);
-        } catch (error) {
-            console.error('Error initializing popup:', error);
-            this.showError();
-        }
-    }
-
-
-    async ensureContentScriptsLoaded(tab) {
-        try {
-            // Try to ping the content script
-            const response = await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
-            if (!response || response.status !== 'ok') {
-                throw new Error('Invalid response');
-            }
-        } catch (error) {
-            console.log('Injecting content scripts...');
-            // Inject in correct order
-            await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                files: [
-                    'src/utils/imageAnalyzer.js',
-                    'src/utils/textAnalyzer.js',
-                    'src/utils/productAnalyzer.js',
-                    'src/content/productDetector.js',
-                    'src/content/content.js'
-                ]
-            });
-            
-            // Give scripts time to initialize
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Verify injection worked
-            try {
-                const verifyResponse = await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
-                if (!verifyResponse || verifyResponse.status !== 'ok') {
-                    throw new Error('Scripts did not initialize properly');
-                }
-            } catch (error) {
-                console.error('Failed to verify script injection:', error);
-                throw error;
-            }
-        }
-    }
-
-    async getProductDetails(tab) {
-        try {
-            return await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    reject(new Error('Timeout getting product details'));
-                }, 5000);
-
-                chrome.tabs.sendMessage(
-                    tab.id,
-                    { type: 'GET_PRODUCT_DETAILS' },
-                    response => {
-                        clearTimeout(timeout);
-                        if (chrome.runtime.lastError) {
-                            reject(new Error(chrome.runtime.lastError.message));
-                        } else {
-                            resolve(response);
-                        }
-                    }
-                );
-            });
-        } catch (error) {
-            console.error('Error getting product details:', error);
-            throw error;
-        }
-    }
-
-    handleProductDetails(productDetails) {
-        // Hide the loading message
-        this.elements.loading.classList.add('is-hidden');
-
-        if (!productDetails) {
-            this.showError();
-            return;
-        }
-
-        // Show the product information
-        this.displayCurrentProduct(productDetails);
+async function loadCurrentProduct() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         
-        // Start loading coupons and similar products
-        this.fetchCoupons(productDetails.domain);
-        this.fetchSimilarProducts(productDetails);
-    }
-
-    displayCurrentProduct(product) {
-        this.elements.currentProduct.classList.remove('is-hidden');
-        this.elements.productImage.src = product.image || '';
-        this.elements.productTitle.textContent = product.title || 'Product Title Not Available';
-        this.elements.productPrice.textContent = product.price ? 
-            `₹${product.price.toLocaleString('en-IN')}` : 'Price not available';
-        this.elements.productStore.textContent = `Found on ${product.domain || 'this site'}`;
-    }
-
-    async fetchCoupons(domain) {
-        this.elements.couponsSection.classList.remove('is-hidden');
-
-        try {
-            const coupons = await new Promise((resolve) => {
-                const timeout = setTimeout(() => resolve([]), 5000);
-                chrome.runtime.sendMessage({
-                    type: 'GET_COUPONS',
-                    domain: domain
-                }, response => {
-                    clearTimeout(timeout);
-                    resolve(response || []);
-                });
-            });
-
-            this.displayCoupons(coupons);
-        } catch (error) {
-            console.error('Error fetching coupons:', error);
-            this.elements.noCoupons.classList.remove('is-hidden');
-        }
-    }
-
-    async fetchSimilarProducts(product) {
-        this.elements.similarProductsSection.classList.remove('is-hidden');
+        // Show loading state
+        document.getElementById('current-product').innerHTML = generateLoadingHTML();
         
-        // Show loading spinner
-        const productsLoading = document.getElementById('products-loading');
-        productsLoading.classList.remove('is-hidden');
-        this.elements.productsGrid.classList.add('is-hidden');
-    
-        try {
-            const similarProducts = await new Promise((resolve) => {
-                const timeout = setTimeout(() => resolve([]), 10000);
-                chrome.runtime.sendMessage({
-                    type: 'FIND_SIMILAR_PRODUCTS',
-                    data: product
-                }, response => {
-                    clearTimeout(timeout);
-                    resolve(response || []);
-                });
-            });
-    
-            // Hide loading spinner and show results
-            productsLoading.classList.add('is-hidden');
-            this.elements.productsGrid.classList.remove('is-hidden');
-            this.displaySimilarProducts(similarProducts);
-        } catch (error) {
-            console.error('Error finding similar products:', error);
-            productsLoading.classList.add('is-hidden');
-            this.elements.noProducts.classList.remove('is-hidden');
+        // Get product data from content script
+        const response = await chrome.tabs.sendMessage(tab.id, { action: "getCurrentProduct" });
+        
+        if (response?.product) {
+            document.getElementById('current-product').innerHTML = generateProductHTML(response.product);
+        } else {
+            document.getElementById('current-product').innerHTML = '<p>No product detected on this page.</p>';
         }
-    }
-
-    displayCoupons(coupons) {
-        if (!coupons || coupons.length === 0) {
-            this.elements.noCoupons.classList.remove('is-hidden');
-            return;
-        }
-
-        this.elements.couponsList.innerHTML = coupons.map(coupon => `
-            <div class="coupon-item">
-                <div class="columns is-vcentered is-mobile">
-                    <div class="column">
-                        <p class="has-text-weight-semibold">${coupon.description}</p>
-                        <p class="has-text-grey is-size-7">Code: ${coupon.code}</p>
-                    </div>
-                    <div class="column is-narrow">
-                        <button class="button is-primary is-small copy-code" 
-                                data-code="${coupon.code}">
-                            Copy Code
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-        this.elements.couponsList.querySelectorAll('.copy-code').forEach(button => {
-            button.addEventListener('click', () => {
-                navigator.clipboard.writeText(button.dataset.code);
-                button.textContent = 'Copied!';
-                setTimeout(() => {
-                    button.textContent = 'Copy Code';
-                }, 2000);
-            });
-        });
-    }
-
-    displaySimilarProducts(products) {
-        if (!products || products.length === 0) {
-            this.elements.noProducts.classList.remove('is-hidden');
-            return;
-        }
-
-        this.elements.productsGrid.innerHTML = products.map(product => `
-            <div class="column is-6">
-                <a href="${product.url}" target="_blank" class="card product-card">
-                    <div class="card-image">
-                        <figure class="image">
-                            <img src="${product.image || ''}" alt="${product.title || 'Product Image'}" 
-                                 onerror="this.src='../../assets/icons/placeholder.png'">
-                        </figure>
-                    </div>
-                    <div class="card-content">
-                        <p class="title is-6">${product.title || 'Product Title'}</p>
-                        <p class="subtitle is-6 has-text-primary">
-                            ${product.price ? `₹${product.price.toLocaleString('en-IN')}` : 'Price N/A'}
-                        </p>
-                        <p class="is-size-7 has-text-grey">${product.domain || 'Unknown Store'}</p>
-                        <div class="mt-2">
-                            <span class="tag is-info">
-                                ${Math.round((product.similarityScore || 0) * 100)}% match
-                            </span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        `).join('');
-    }
-
-    showError() {
-        this.elements.loading.classList.add('is-hidden');
-        this.elements.errorMessage.classList.remove('is-hidden');
+    } catch (error) {
+        console.error('Error loading current product:', error);
+        document.getElementById('current-product').innerHTML = '<p>Error loading product information.</p>';
     }
 }
 
-// Initialize popup when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    new PopupManager();
+async function loadCoupons() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const retailer = new URL(tab.url).hostname.split('.')[1];
+        
+        document.getElementById('coupon-section').innerHTML = '<div class="loading">Loading coupons...</div>';
+        
+        const couponAnalyzer = new CouponAnalyzer();
+        const coupons = await couponAnalyzer.fetchCoupons(retailer);
+        
+        if (coupons && coupons.length > 0) {
+            document.getElementById('coupon-section').innerHTML = generateCouponsHTML(coupons);
+            setupCouponInteractions();
+        } else {
+            document.getElementById('coupon-section').innerHTML = '<p>No coupons available.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading coupons:', error);
+        document.getElementById('coupon-section').innerHTML = '<p>Error loading coupons.</p>';
+    }
+}
 
-// popup/popup.js (Add to existing file)
-// Add coupon-related UI handlers
-document.addEventListener('DOMContentLoaded', async () => {
-    const couponSection = document.getElementById('coupon-section');
-    const couponAnalyzer = new CouponAnalyzer();
-    
-    // Get current tab's retailer
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const retailer = new URL(tab.url).hostname.split('.')[1];
-    
-    const coupons = await couponAnalyzer.fetchCoupons(retailer);
-    
-    // Update popup UI with coupon information
-    couponSection.innerHTML = generateCouponList(coupons);
-});
-});
+async function loadSimilarProducts() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        
+        document.getElementById('similar-products').innerHTML = generateLoadingHTML();
+        
+        const response = await chrome.tabs.sendMessage(tab.id, { action: "getSimilarProducts" });
+        
+        if (response?.products?.length > 0) {
+            document.getElementById('similar-products').innerHTML = generateSimilarProductsHTML(response.products);
+        } else {
+            document.getElementById('similar-products').innerHTML = '<p>No similar products found.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading similar products:', error);
+        document.getElementById('similar-products').innerHTML = '<p>Error loading similar products.</p>';
+    }
+}
+
+function generateProductHTML(product) {
+    return `
+        <div class="card current-product-card">
+            <div class="card-image">
+                <figure class="image">
+                    <img src="${product.image}" alt="${product.name}">
+                </figure>
+            </div>
+            <div class="card-content">
+                <p class="title is-4">${product.name}</p>
+                <p class="subtitle is-6">${product.price}</p>
+                <div class="content">${product.description}</div>
+            </div>
+        </div>
+    `;
+}
+
+function generateCouponsHTML(coupons) {
+    return `
+        <div class="coupons-container">
+            <h3 class="title is-4">Available Coupons</h3>
+            ${coupons.map(coupon => `
+                <div class="coupon-item box">
+                    <div class="coupon-info">
+                        <span class="discount">${coupon.discountValue}% OFF</span>
+                        <span class="code">${coupon.code}</span>
+                        <span class="expiry">Expires: ${new Date(coupon.expiryDate).toLocaleDateString()}</span>
+                    </div>
+                    <button class="button is-primary copy-code" data-code="${coupon.code}">
+                        Copy Code
+                    </button>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function generateSimilarProductsHTML(products) {
+    return `
+        <div class="columns is-multiline">
+            ${products.map(product => `
+                <div class="column is-4">
+                    <div class="card product-card">
+                        <div class="card-image">
+                            <figure class="image">
+                                <img src="${product.image}" alt="${product.name}">
+                            </figure>
+                        </div>
+                        <div class="card-content">
+                            <p class="title is-5">${product.name}</p>
+                            <p class="subtitle is-6">${product.price}</p>
+                            <a href="${product.url}" target="_blank" class="button is-small is-fullwidth">
+                                View Product
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function generateLoadingHTML() {
+    return `
+        <div class="loader-container">
+            <div class="futuristic-loader">
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+            <p class="loading-text">Loading...</p>
+        </div>
+    `;
+}
+
+function setupCouponInteractions() {
+    document.querySelectorAll('.copy-code').forEach(button => {
+        button.addEventListener('click', async () => {
+            const code = button.dataset.code;
+            try {
+                await navigator.clipboard.writeText(code);
+                button.textContent = 'Copied!';
+                button.classList.add('is-success');
+                setTimeout(() => {
+                    button.textContent = 'Copy Code';
+                    button.classList.remove('is-success');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy code:', err);
+                button.textContent = 'Error';
+                button.classList.add('is-danger');
+            }
+        });
+    });
+}
+
+async function refreshData() {
+    await Promise.all([
+        loadCurrentProduct(),
+        loadCoupons(),
+        loadSimilarProducts()
+    ]);
+}
+
+function openSettings() {
+    // Implement settings functionality
+    console.log('Settings opened');
+}
+
+// Add this to your existing popup.css file

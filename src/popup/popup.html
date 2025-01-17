@@ -48,10 +48,20 @@
                 </div>
             </div>
 
-            <!-- Coupons section -->
+            <!-- Enhanced Coupons section with Bulma styling -->
             <div id="coupons-section" class="mb-5 is-hidden">
                 <h5 class="title is-5 mb-3">Available Coupons</h5>
-                <div id="coupons-list"></div>
+                <div id="coupons-list">
+                    <div id="coupons-loading" class="has-text-centered is-hidden">
+                        <div class="futuristic-loader is-small">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                        <p class="is-size-7 mt-2">Loading coupons...</p>
+                    </div>
+                    <div id="coupons-container"></div>
+                </div>
                 <p id="no-coupons" class="has-text-centered has-text-grey is-hidden">
                     No coupons available for this site.
                 </p>
@@ -81,11 +91,33 @@
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="../utils/imageAnalyzer.js"></script>
     <script src="../utils/textAnalyzer.js"></script>
     <script src="../utils/productAnalyzer.js"></script>
+    <script src="../utils/couponAnalyzer.js" type="module"></script>
     <script src="../content/productDetector.js"></script>
-    <script src="popup.js"></script>
+    <script src="../content/couponDetector.js" type="module"></script>
+    <script src="popup.js" type="module"></script>
+
+    <!-- Coupon item template -->
+    <template id="coupon-template">
+        <div class="card mb-3 coupon-item">
+            <div class="card-content">
+                <div class="columns is-mobile is-vcentered">
+                    <div class="column">
+                        <p class="title is-5 mb-2 discount-value"></p>
+                        <p class="subtitle is-6 mb-2 coupon-code"></p>
+                        <p class="is-size-7 has-text-grey expiry-date"></p>
+                    </div>
+                    <div class="column is-narrow">
+                        <button class="button is-primary copy-code">
+                            Copy Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
 </body>
 </html>
-

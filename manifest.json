@@ -43,13 +43,12 @@
         "src/utils/imageAnalyzer.js",
         "src/utils/textAnalyzer.js",
         "src/utils/productAnalyzer.js",
+        "src/utils/couponAnalyzer.js",
         "src/content/productDetector.js",
-        "src/content/content.js",
-        "utils/couponAnalyzer.js",
-        "content/couponDetector.js",
-        "content/productDetector.js"
+        "src/content/couponDetector.js",
+        "src/content/content.js"
       ],
-      "css": ["popup/popup.css"]
+      "css": ["src/popup/popup.css"]
     }
   ]
 }
