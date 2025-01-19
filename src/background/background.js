@@ -4,6 +4,7 @@ class BackgroundScript {
         this.productCache = new Map();
         this.rapidApiKey = '78fd557f25mshe39c0d4c5c2851cp15794cjsn9b95dbf86b42';
         this.amazonApiHost = 'real-time-amazon-data.p.rapidapi.com';
+        this.imageAnalyzer = new ImageAnalyzer(); // Add missing ImageAnalyzer instance
     }
 
     setupMessageListener() {
@@ -11,8 +12,20 @@ class BackgroundScript {
             if (message.type === 'FIND_SIMILAR_PRODUCTS') {
                 this.handleFindSimilarProducts(message.data, sendResponse);
                 return true;
+            } else if (message.type === 'GET_COUPONS') { // Add missing coupon handler
+                this.handleGetCoupons(message.domain, sendResponse);
+                return true;
             }
         });
+    }
+
+    async handleGetCoupons(domain, sendResponse) {
+        // Mock coupon data - replace with actual API call
+        const coupons = [
+            { code: 'FIRST10', description: '10% off your first order' },
+            { code: 'SAVE20', description: '₹20 off on orders above ₹200' }
+        ];
+        sendResponse(coupons);
     }
 
     async handleFindSimilarProducts(sourceProduct, sendResponse) {
@@ -108,29 +121,12 @@ class BackgroundScript {
     }
 
     calculateSnapdealAmazonSimilarity(snapdealProduct, amazonProduct) {
-        let score = 0;
-        
-        // Brand and model matching (higher weight)
-        const snapdealBrand = this.extractBrand(snapdealProduct.title);
-        const amazonBrand = this.extractBrand(amazonProduct.title);
-        if (snapdealBrand && amazonBrand && 
-            snapdealBrand.toLowerCase() === amazonBrand.toLowerCase()) {
-            score += 0.4;
-        }
-
-        // Price similarity (adjusted weight)
-        const priceDiff = Math.abs(snapdealProduct.price - amazonProduct.price);
-        const priceScore = Math.max(0, 0.3 - (priceDiff / snapdealProduct.price) * 0.3);
-        score += priceScore;
-
-        // Title similarity (focusing on key terms)
-        const keywordsScore = this.calculateKeywordSimilarity(
-            snapdealProduct.title,
-            amazonProduct.title
-        );
-        score += keywordsScore * 0.3;
-
-        return Math.min(1, score);
+        // Only use image similarity score
+        return snapdealProduct.imageEmbedding && amazonProduct.imageEmbedding ? 
+            this.imageAnalyzer.calculateImageSimilarity(
+                snapdealProduct.imageEmbedding, 
+                amazonProduct.imageEmbedding
+            ) : 0;
     }
 
     extractBrand(title) {

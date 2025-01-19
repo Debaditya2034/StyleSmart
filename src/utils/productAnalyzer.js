@@ -1,39 +1,27 @@
 // src/utils/productAnalyzer.js
-
 class ProductAnalyzer {
     constructor() {
         this.imageAnalyzer = new ImageAnalyzer();
-        this.textAnalyzer = new TextAnalyzer();
     }
 
     async analyzeProduct(product) {
+        // Only get image embedding, remove text analysis
         const imageEmbedding = await this.imageAnalyzer.getImageEmbedding(product.image);
-        const textFeatures = this.textAnalyzer.extractFeatures(product.title);
 
         return {
             ...product,
-            imageEmbedding,
-            textFeatures
+            imageEmbedding
         };
     }
 
     calculateSimilarity(product1, product2) {
         if (!product1 || !product2) return 0;
 
-        // Calculate image similarity (40% weight)
-        const imageSimilarity = this.imageAnalyzer.calculateImageSimilarity(
+        // Use only image similarity (100% weight)
+        return this.imageAnalyzer.calculateImageSimilarity(
             product1.imageEmbedding,
             product2.imageEmbedding
         );
-
-        // Calculate text similarity (60% weight)
-        const textSimilarity = this.textAnalyzer.calculateTextSimilarity(
-            product1.textFeatures,
-            product2.textFeatures
-        );
-
-        // Weighted average
-        return (imageSimilarity * 0.4) + (textSimilarity * 0.6);
     }
 }
 

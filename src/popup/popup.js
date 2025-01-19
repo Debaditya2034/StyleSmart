@@ -61,7 +61,6 @@ class PopupManager {
                 target: { tabId: tab.id },
                 files: [
                     'src/utils/imageAnalyzer.js',
-                    'src/utils/textAnalyzer.js',
                     'src/utils/productAnalyzer.js',
                     'src/content/productDetector.js',
                     'src/content/content.js'
