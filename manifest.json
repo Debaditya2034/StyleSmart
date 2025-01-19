@@ -31,16 +31,17 @@
     "service_worker": "src/background/background.js",
     "type": "module"
   },
-  "content_scripts": [
+  "content_scripts": 
+  [
     {
       "matches": [
         "https://*.amazon.in/*",
         "https://*.snapdeal.com/*",
         "https://*.zara.com/*"
       ],
-      "js": [
+      "js": 
+      [
         "src/utils/imageAnalyzer.js",
-        "src/utils/textAnalyzer.js",
         "src/utils/productAnalyzer.js",
         "src/content/productDetector.js",
         "src/content/content.js"
